@@ -13,6 +13,7 @@ private enum Palette {
 
 struct CaptureView: View {
     @ObservedObject var model: CaptureModel
+    var onHeightChange: (CGFloat) -> Void = { _ in }
     @FocusState private var focus: Field?
 
     enum Field: Hashable { case editor, docSearch, column(String) }
@@ -46,6 +47,13 @@ struct CaptureView: View {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(Palette.cardBorder, lineWidth: 1)
                 )
+        )
+        .background(
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { onHeightChange(proxy.size.height) }
+                    .onChange(of: proxy.size.height) { onHeightChange($0) }
+            }
         )
         .onDrop(of: [.image, .fileURL], isTargeted: nil) { providers in
             guard !model.isTableCapture else { return false }

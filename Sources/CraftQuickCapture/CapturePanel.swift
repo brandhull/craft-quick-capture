@@ -13,29 +13,21 @@ final class CapturePanelController {
     private var panel: CapturePanel?
     private var hostView: NSHostingView<CaptureView>?
     private var keyMonitor: Any?
-    private var resizeSub: AnyCancellable?
     let model: CaptureModel
 
     init(store: DocumentStore) {
         self.model = CaptureModel(store: store)
         self.model.onClose = { [weak self] in self?.hide() }
-        // Content height changes while the panel is up (schema form loads,
-        // image dropped, search results appear) — grow/shrink the window to
-        // match, keeping the top edge pinned so it doesn't jump around.
-        resizeSub = model.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                DispatchQueue.main.async { self?.resizeToFit() }
-            }
     }
 
-    private func resizeToFit() {
-        guard let panel, let hostView, panel.isVisible else { return }
-        let size = hostView.fittingSize
-        guard size.height > 0, abs(size.height - panel.frame.height) > 0.5 else { return }
+    /// SwiftUI reports its rendered height (via GeometryReader); the window
+    /// follows, top edge pinned so the panel grows downward.
+    private func setContentHeight(_ height: CGFloat) {
+        guard let panel, height > 0,
+              abs(height - panel.frame.height) > 0.5 else { return }
         var frame = panel.frame
-        frame.origin.y = frame.maxY - size.height // keep top edge fixed
-        frame.size = size
+        frame.origin.y = frame.maxY - height
+        frame.size.height = height
         panel.setFrame(frame, display: true)
     }
 
@@ -77,8 +69,10 @@ final class CapturePanelController {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.animationBehavior = .utilityWindow
 
-        let host = NSHostingView(rootView: CaptureView(model: model))
-        host.sizingOptions = [.preferredContentSize]
+        let view = CaptureView(model: model) { [weak self] height in
+            DispatchQueue.main.async { self?.setContentHeight(height) }
+        }
+        let host = NSHostingView(rootView: view)
         panel.contentView = host
         hostView = host
 
