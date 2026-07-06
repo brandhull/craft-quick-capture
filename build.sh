@@ -5,8 +5,9 @@ cd "$(dirname "$0")"
 
 swift build -c release
 
-APP="build/CraftQuickCapture.app"
-rm -rf "$APP"
+# Staged inside .build (hidden) so Spotlight/Alfred don't index a second copy.
+APP=".build/bundle/CraftQuickCapture.app"
+rm -rf "$APP" build
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/CraftQuickCapture "$APP/Contents/MacOS/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"

@@ -83,7 +83,7 @@ URL. If that bothers you, swap in your own host in `ImageUploader.swift`.
 ## Building
 
 ```sh
-./build.sh            # build build/CraftQuickCapture.app
+./build.sh            # build .build/bundle/CraftQuickCapture.app
 ./build.sh --install  # build, install to /Applications, relaunch
 ```
 
