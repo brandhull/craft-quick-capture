@@ -28,20 +28,27 @@ Craft's API.
 
 ## Usage
 
+### Ways to capture
+
+| You want | Pick as destination | What happens |
+|---|---|---|
+| Text or an image on a page | Any **document** | Content is appended to the end of the page. Markdown renders: `# ` headings, `**bold**`, `- ` lists, blank line = new block. |
+| A checkable task on a page | Any **document** | Start a line with `- [ ]` — it becomes a real Craft task block on that page. |
+| A row in a table | A **collection** (table icon in the picker) | The popup becomes a form built from the table's schema — one field per column, dropdowns for single-select columns. ⌘↩ adds the row. Images can't go into table rows. |
+
+Planned: capture straight to Craft's **Tasks inbox** with schedule/deadline dates
+(the API supports it; the UI isn't built yet).
+
+### Mechanics
+
 - **⌥⌘Space** — toggle the capture popup (also available from the menu bar icon)
 - Type text, and/or **drag an image** onto the window (or **⌘V** paste an image)
-- Click the document row to pick a destination: recent docs show first, typing
-  searches every document title, folder name, and table in your space
-- **Tables**: pick a Craft collection (marked with a table icon) and the popup
-  becomes a schema-driven form — one field per column, dropdowns for
-  single-select columns. ⌘↩ adds the row. (Images can't go into table rows.)
-- **↑/↓ + ↩** to pick a document, **⌘↩** to save, **esc** to cancel
-- The last-used document stays selected for rapid repeat captures
-- Markdown works: `# ` headings, `**bold**`, `*italics*`, `- ` lists,
-  `- [ ]` tasks. Blank line = new block, single newline = line break.
+- Click the destination row to pick where it goes: recent destinations show
+  first, typing searches every document title, folder name, and table in your
+  space
+- **↑/↓ + ↩** to pick a destination, **⌘↩** to save, **esc** to cancel
+- The last-used destination stays selected for rapid repeat captures
 - Hold ⌘ and drag the menu bar icon to reposition it (position persists)
-
-Content is appended to the end of the chosen document.
 
 ## How it works
 
