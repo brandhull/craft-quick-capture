@@ -35,6 +35,7 @@ Craft's API.
 | Text or an image on a page | Any **document** | Content is appended to the end of the page. Markdown renders: `# ` headings, `**bold**`, `- ` lists, blank line = new block. |
 | A checkable task on a page | Any **document** | Start a line with `- [ ]` — it becomes a real Craft task block on that page. |
 | A row in a table | A **collection** (table icon in the picker) | The popup becomes a form built from the table's schema — one field per column, dropdowns for single-select columns. ⌘↩ adds the row. Images can't go into table rows. |
+| Something on today's daily note | **Today** (calendar icon, pinned at the top of the picker) | Appends to the calendar-integrated daily page. Typing `tomorrow` or `yesterday` finds those too. Combine with `- [ ]` for a task on today's agenda. |
 
 Planned: capture straight to Craft's **Tasks inbox** with schedule/deadline dates
 (the API supports it; the UI isn't built yet).
