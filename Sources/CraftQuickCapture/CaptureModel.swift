@@ -13,6 +13,7 @@ final class CaptureModel: ObservableObject {
     @Published var isSaving = false
     @Published var editorHeight: CGFloat = 64
     @Published var focusEditorTick = 0
+    @Published var hotKeyDisplay = (Config.load().hotKey ?? .default).display
     @Published var errorMessage: String?
     @Published var justSaved = false
 

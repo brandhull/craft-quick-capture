@@ -88,7 +88,7 @@ struct CaptureView: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Palette.textSecondary)
             Spacer()
-            Text("⌥⌘Space")
+            Text(model.hotKeyDisplay)
                 .font(.system(size: 10.5, weight: .medium))
                 .foregroundColor(Palette.textSecondary)
                 .padding(.horizontal, 8)

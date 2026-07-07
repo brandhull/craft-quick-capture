@@ -1,5 +1,6 @@
 import AppKit
 import ServiceManagement
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKey: HotKey?
     private var store: DocumentStore!
     private var panelController: CapturePanelController!
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         store = DocumentStore()
@@ -20,11 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusItem.menu = buildMenu()
 
-        hotKey = HotKey { [weak self] in
-            self?.panelController.toggle()
-        }
-        if hotKey == nil {
-            NSLog("CraftQuickCapture: failed to register ⌥⌘Space (another app may own it)")
+        let spec = Config.load().hotKey ?? .default
+        if !applyHotKey(spec, persist: false) {
+            NSLog("CraftQuickCapture: failed to register \(spec.display) (another app may own it)")
         }
 
         if !Config.isConfigured {
@@ -52,7 +52,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         let url = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !url.isEmpty, URL(string: url) != nil else { return }
-        Config(mcpUrl: url).save()
+        var cfg = Config.load()
+        cfg.mcpUrl = url
+        cfg.save()
         store.refresh()
     }
 
@@ -60,11 +62,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         promptForCraftLink(firstRun: false)
     }
 
+    /// Registers `spec` as the global hotkey; on success persists it and
+    /// updates every surface that shows the shortcut. Keeps the old hotkey
+    /// if registration fails.
+    @discardableResult
+    func applyHotKey(_ spec: HotKeySpec, persist: Bool = true) -> Bool {
+        let old = hotKey
+        hotKey = nil
+        guard let new = HotKey(keyCode: spec.keyCode, modifiers: spec.modifiers,
+                               callback: { [weak self] in self?.panelController.toggle() })
+        else {
+            hotKey = old
+            return false
+        }
+        hotKey = new
+        if persist {
+            var cfg = Config.load()
+            cfg.hotKey = spec
+            cfg.save()
+        }
+        panelController.model.hotKeyDisplay = spec.display
+        statusItem.menu = buildMenu()
+        return true
+    }
+
+    @objc private func openSettings() {
+        if settingsWindow == nil {
+            let view = SettingsView(spec: Config.load().hotKey ?? .default) { [weak self] spec in
+                self?.applyHotKey(spec) ?? false
+            }
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 150),
+                                  styleMask: [.titled, .closable],
+                                  backing: .buffered, defer: false)
+            window.title = "Craft Quick Capture Settings"
+            window.contentView = NSHostingView(rootView: view)
+            window.isReleasedWhenClosed = false
+            window.center()
+            settingsWindow = window
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
 
-        let capture = NSMenuItem(title: "Quick Capture", action: #selector(openCapture), keyEquivalent: " ")
-        capture.keyEquivalentModifierMask = [.command, .option]
+        let spec = Config.load().hotKey ?? .default
+        let capture = NSMenuItem(title: "Quick Capture", action: #selector(openCapture), keyEquivalent: spec.keyChar)
+        capture.keyEquivalentModifierMask = spec.cocoaModifiers
         capture.target = self
         menu.addItem(capture)
 
@@ -75,6 +120,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let connection = NSMenuItem(title: "Set Craft Connection…", action: #selector(setCraftConnection), keyEquivalent: "")
         connection.target = self
         menu.addItem(connection)
+
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: "")
+        settings.target = self
+        menu.addItem(settings)
 
         menu.addItem(.separator())
 

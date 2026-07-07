@@ -96,11 +96,12 @@ pipeline from the CLI.
 
 ## Notes
 
-- ⌥⌘Space may conflict with the system "Show Finder search window" shortcut —
-  disable it in System Settings → Keyboard → Keyboard Shortcuts → Spotlight if
-  the popup doesn't appear.
-- The hotkey is currently fixed at ⌥⌘Space (change `HotKey.swift` defaults to
-  rebind; an in-app settings UI is on the roadmap).
+- Change the shortcut via menu bar icon → **Settings…** — click the shortcut
+  button, press a new combo (must include ⌘, ⌥, or ⌃). It re-registers
+  immediately and persists.
+- The default ⌥⌘Space may conflict with the system "Show Finder search window"
+  shortcut — disable that in System Settings → Keyboard → Keyboard Shortcuts →
+  Spotlight, or just pick a different shortcut in Settings.
 
 ## License
 

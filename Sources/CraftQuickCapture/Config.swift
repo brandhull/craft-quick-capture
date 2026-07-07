@@ -5,6 +5,7 @@ import Foundation
 /// never hardcoded — each user pastes their own link on first launch.
 struct Config: Codable {
     var mcpUrl: String
+    var hotKey: HotKeySpec?    // nil = default ⌥⌘Space
 
     static var supportDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -20,7 +21,7 @@ struct Config: Codable {
            let cfg = try? JSONDecoder().decode(Config.self, from: data) {
             return cfg
         }
-        return Config(mcpUrl: "")
+        return Config(mcpUrl: "", hotKey: nil)
     }
 
     func save() {
