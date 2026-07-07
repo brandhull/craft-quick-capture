@@ -97,8 +97,11 @@ pipeline from the CLI.
 ## Notes
 
 - Change the shortcut via menu bar icon → **Settings…** — click the shortcut
-  button, press a new combo (must include ⌘, ⌥, or ⌃). It re-registers
-  immediately and persists.
+  button, press a new combo (must include ⌘, ⌥, or ⌃; esc cancels recording).
+  It re-registers immediately and persists. If macOS refuses the combo
+  (another app already owns it), the previous shortcut stays active and
+  Settings tells you — you can't end up with no working hotkey. "Reset to
+  Default" restores ⌥⌘Space.
 - The default ⌥⌘Space may conflict with the system "Show Finder search window"
   shortcut — disable that in System Settings → Keyboard → Keyboard Shortcuts →
   Spotlight, or just pick a different shortcut in Settings.
