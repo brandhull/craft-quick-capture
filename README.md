@@ -26,6 +26,12 @@ Craft's API.
 
 3. Optional: menu bar icon → Launch at Login.
 
+**Multiple spaces (Craft Plus):** each Craft space has its own MCP link. Add
+more via menu bar icon → Settings… → Craft spaces. All spaces share one
+picker; when more than one is connected, rows show which space a destination
+lives in, and search matches space names too. Saves automatically go through
+the right space's link. Daily-note captures target the primary (first) space.
+
 ## Usage
 
 ### Ways to capture
