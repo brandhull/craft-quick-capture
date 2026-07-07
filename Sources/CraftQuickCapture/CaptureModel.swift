@@ -25,7 +25,14 @@ final class CaptureModel: ObservableObject {
     let store: DocumentStore
     var onClose: (() -> Void)?
 
-    private let client = CraftClient()
+    /// Client for the space that owns the destination (primary for daily notes).
+    private func client(for dest: Destination) -> CraftClient {
+        switch dest {
+        case .document(let d): return CraftClient(url: d.spaceUrl)
+        case .collection(let c): return CraftClient(url: c.spaceUrl)
+        case .dailyNote: return CraftClient()
+        }
+    }
 
     init(store: DocumentStore) {
         self.store = store
@@ -123,6 +130,7 @@ final class CaptureModel: ObservableObject {
         guard canSave, let dest = selectedDestination else { return }
         isSaving = true
         errorMessage = nil
+        let client = client(for: dest)
         Task {
             do {
                 switch dest {

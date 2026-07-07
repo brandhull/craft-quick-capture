@@ -4,12 +4,16 @@ struct CraftDocument: Codable, Identifiable, Hashable {
     let id: String      // rootBlockId, usable directly with `blocks add --id`
     let title: String
     var folder: String?
+    var spaceName: String?  // set when multiple spaces are connected
+    var spaceUrl: String?   // MCP link that owns this doc; nil = primary
 }
 
 struct CraftCollection: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let documentId: String  // rootBlockId of the containing document
+    var spaceName: String?
+    var spaceUrl: String?
 }
 
 struct CraftColumn: Codable, Hashable {
@@ -46,11 +50,16 @@ enum CraftError: LocalizedError {
 /// stateless — a bare JSON-RPC tools/call works with no initialize handshake —
 /// and replies as a single-event SSE stream.
 struct CraftClient {
+    /// The MCP link this client talks to. Empty string = unconfigured.
+    let url: String
+
+    /// Client for a specific space link. Pass nil to use the primary space.
+    init(url: String? = nil) {
+        self.url = url ?? Config.load().effectiveConnections.first ?? ""
+    }
+
     func call(tool: String, command: String) async throws -> String {
-        // Resolved per call so a link pasted via "Set Craft Connection…"
-        // takes effect immediately, without recreating clients.
-        let urlString = Config.load().mcpUrl
-        guard !urlString.isEmpty, let endpoint = URL(string: urlString) else {
+        guard !url.isEmpty, let endpoint = URL(string: url) else {
             throw CraftError.notConfigured
         }
         var req = URLRequest(url: endpoint)
@@ -169,6 +178,15 @@ struct CraftClient {
         let quoted = Self.craftQuote(markdown)
         _ = try await call(tool: "craft_write",
                            command: "blocks add --date \(day) --markdown \(quoted) --position end")
+    }
+
+    /// Space name from `connection info` (each link is bound to one space).
+    func spaceName() async throws -> String {
+        let text = try await call(tool: "craft_read", command: "connection info")
+        guard let obj = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
+              let space = obj["space"] as? [String: Any],
+              let name = space["name"] as? String else { throw CraftError.badResponse }
+        return name
     }
 
     /// Parses `collections list`: lines like

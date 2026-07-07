@@ -44,9 +44,12 @@ final class DocumentStore: ObservableObject {
     @Published var lastUsedId: String?
     @Published var isRefreshing = false
 
-    private let client = CraftClient()
+    @Published var spaceNames: [String: String] = [:]  // link url → space name
+
     private var lastFetch: Date?
     private var schemaCache: [String: CraftSchema] = [:]
+
+    var hasMultipleSpaces: Bool { Config.load().effectiveConnections.count > 1 }
 
     private var cacheFile: URL { Config.supportDir.appendingPathComponent("documents.json") }
     private var recentsFile: URL { Config.supportDir.appendingPathComponent("recents.json") }
@@ -56,6 +59,7 @@ final class DocumentStore: ObservableObject {
         var fetchedAt: Date
         var docs: [CraftDocument]
         var collections: [CraftCollection]?
+        var spaceNames: [String: String]?
     }
     private struct Recents: Codable {
         var ids: [String]
@@ -67,6 +71,7 @@ final class DocumentStore: ObservableObject {
            let cache = try? JSONDecoder().decode(Cache.self, from: data) {
             documents = cache.docs
             collections = cache.collections ?? []
+            spaceNames = cache.spaceNames ?? [:]
             lastFetch = cache.fetchedAt
         }
         if let data = try? Data(contentsOf: recentsFile),
@@ -94,29 +99,47 @@ final class DocumentStore: ObservableObject {
         isRefreshing = true
         Task {
             defer { isRefreshing = false }
-            do {
-                let docs = try await client.listAllDocuments()
-                guard !docs.isEmpty else { return }
-                let cols = (try? await client.listCollections()) ?? collections
-                documents = docs
-                collections = cols
-                lastFetch = Date()
-                let cache = Cache(fetchedAt: Date(), docs: docs, collections: cols)
-                if let data = try? JSONEncoder().encode(cache) {
-                    try? data.write(to: cacheFile)
+            let urls = Config.load().effectiveConnections
+            let multi = urls.count > 1
+            var allDocs: [CraftDocument] = []
+            var allCols: [CraftCollection] = []
+            var names: [String: String] = [:]
+            for url in urls {
+                let client = CraftClient(url: url)
+                do {
+                    let name = multi ? ((try? await client.spaceName()) ?? "Space") : nil
+                    if let name { names[url] = name }
+                    var docs = try await client.listAllDocuments()
+                    var cols = (try? await client.listCollections()) ?? []
+                    if multi {
+                        for i in docs.indices { docs[i].spaceName = name; docs[i].spaceUrl = url }
+                        for i in cols.indices { cols[i].spaceName = name; cols[i].spaceUrl = url }
+                    }
+                    allDocs += docs
+                    allCols += cols
+                } catch {
+                    NSLog("CraftQuickCapture: refresh failed for a space: \(error.localizedDescription)")
                 }
-            } catch {
-                NSLog("CraftQuickCapture: refresh failed: \(error.localizedDescription)")
+            }
+            guard !allDocs.isEmpty else { return }
+            documents = allDocs
+            collections = allCols
+            spaceNames = names
+            lastFetch = Date()
+            let cache = Cache(fetchedAt: Date(), docs: allDocs, collections: allCols, spaceNames: names)
+            if let data = try? JSONEncoder().encode(cache) {
+                try? data.write(to: cacheFile)
             }
         }
     }
 
     /// Cached schema immediately if available; fetches (and re-caches) otherwise.
     func schema(for collection: CraftCollection) async throws -> CraftSchema {
+        let client = CraftClient(url: collection.spaceUrl)
         if let cached = schemaCache[collection.id] {
             // Refresh in the background so new columns appear next time.
             Task { [weak self] in
-                if let fresh = try? await self?.client.collectionSchema(id: collection.id) {
+                if let fresh = try? await client.collectionSchema(id: collection.id) {
                     self?.storeSchema(fresh)
                 }
             }
@@ -137,12 +160,23 @@ final class DocumentStore: ObservableObject {
     /// Folder context for a destination: the document's folder, or for a
     /// collection, the containing document's title.
     func context(for dest: Destination) -> String? {
+        var parts: [String] = []
         switch dest {
-        case .document(let d): return d.folder
+        case .document(let d):
+            if let folder = d.folder { parts.append(folder) }
+            if let space = d.spaceName { parts.append(space) }
         case .collection(let c):
-            return documents.first { $0.id == c.documentId }?.title
-        case .dailyNote: return "Daily note"
+            if let doc = documents.first(where: { $0.id == c.documentId }) { parts.append(doc.title) }
+            if let space = c.spaceName { parts.append(space) }
+        case .dailyNote:
+            parts.append("Daily note")
+            if hasMultipleSpaces,
+               let primary = Config.load().effectiveConnections.first,
+               let name = spaceNames[primary] {
+                parts.append(name)
+            }
         }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     func markUsed(_ dest: Destination) {

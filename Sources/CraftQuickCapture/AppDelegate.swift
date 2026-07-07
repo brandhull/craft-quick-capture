@@ -88,14 +88,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let view = SettingsView(spec: Config.load().hotKey ?? .default) { [weak self] spec in
-                self?.applyHotKey(spec) ?? false
-            }
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 150),
-                                  styleMask: [.titled, .closable],
-                                  backing: .buffered, defer: false)
+            let view = SettingsView(spec: Config.load().hotKey ?? .default,
+                                    store: store,
+                                    onApply: { [weak self] spec in
+                                        self?.applyHotKey(spec) ?? false
+                                    },
+                                    onConnectionsChanged: { [weak self] urls in
+                                        var cfg = Config.load()
+                                        cfg.setConnections(urls)
+                                        cfg.save()
+                                        self?.store.refresh()
+                                    })
+            // contentViewController sizing lets the window track the SwiftUI
+            // content as the spaces list grows and shrinks.
+            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+            window.styleMask = [.titled, .closable]
             window.title = "Craft Quick Capture Settings"
-            window.contentView = NSHostingView(rootView: view)
             window.isReleasedWhenClosed = false
             window.center()
             settingsWindow = window

@@ -4,8 +4,21 @@ import Foundation
 /// The Craft MCP link URL embeds the auth token for your Craft space, so it is
 /// never hardcoded — each user pastes their own link on first launch.
 struct Config: Codable {
-    var mcpUrl: String
+    var mcpUrl: String         // first/primary space link (kept for back-compat)
+    var connections: [String]? // all space links; nil = just mcpUrl
     var hotKey: HotKeySpec?    // nil = default ⌥⌘Space
+
+    /// Every configured space link, in order. The first is primary (daily
+    /// notes and diagnostics go there).
+    var effectiveConnections: [String] {
+        if let connections, !connections.isEmpty { return connections }
+        return mcpUrl.isEmpty ? [] : [mcpUrl]
+    }
+
+    mutating func setConnections(_ urls: [String]) {
+        connections = urls
+        mcpUrl = urls.first ?? ""
+    }
 
     static var supportDir: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -21,7 +34,7 @@ struct Config: Codable {
            let cfg = try? JSONDecoder().decode(Config.self, from: data) {
             return cfg
         }
-        return Config(mcpUrl: "", hotKey: nil)
+        return Config(mcpUrl: "", connections: nil, hotKey: nil)
     }
 
     func save() {
@@ -31,7 +44,7 @@ struct Config: Codable {
     }
 
     static var isConfigured: Bool {
-        let url = load().mcpUrl
-        return !url.isEmpty && URL(string: url) != nil
+        let urls = load().effectiveConnections
+        return !urls.isEmpty && urls.allSatisfy { URL(string: $0) != nil }
     }
 }
