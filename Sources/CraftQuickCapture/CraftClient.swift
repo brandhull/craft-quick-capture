@@ -1,11 +1,12 @@
 import Foundation
 
 struct CraftDocument: Codable, Identifiable, Hashable {
-    let id: String      // rootBlockId, usable directly with `blocks add --id`
+    let id: String      // rootBlockId (or sub-page block id) for `blocks add --id`
     let title: String
     var folder: String?
     var spaceName: String?  // set when multiple spaces are connected
     var spaceUrl: String?   // MCP link that owns this doc; nil = primary
+    var parent: String?     // containing document's title, for sub-pages
 }
 
 struct CraftCollection: Codable, Identifiable, Hashable {
@@ -187,6 +188,29 @@ struct CraftClient {
               let space = obj["space"] as? [String: Any],
               let name = space["name"] as? String else { throw CraftError.badResponse }
         return name
+    }
+
+    /// Sub-pages of a document: depth-1 children with type "page". Capturing
+    /// to a sub-page uses `blocks add --id <subPageBlockId>` like any page.
+    func listSubPages(of doc: CraftDocument) async throws -> [CraftDocument] {
+        let text = try await call(tool: "craft_read",
+                                  command: "blocks get \(doc.id) --depth 1 --format json")
+        guard let obj = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
+              let data = obj["data"] as? [[String: Any]],
+              let root = data.first,
+              let content = root["content"] as? [[String: Any]]
+        else { throw CraftError.badResponse }
+        return content.compactMap { block in
+            guard (block["type"] as? String) == "page",
+                  let id = block["id"] as? String,
+                  let title = block["markdown"] as? String else { return nil }
+            return CraftDocument(id: id,
+                                 title: title.trimmingCharacters(in: .whitespaces),
+                                 folder: nil,
+                                 spaceName: doc.spaceName,
+                                 spaceUrl: doc.spaceUrl,
+                                 parent: doc.title)
+        }
     }
 
     /// Parses `collections list`: lines like

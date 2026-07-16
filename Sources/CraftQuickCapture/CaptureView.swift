@@ -256,9 +256,32 @@ struct CaptureView: View {
 
     private var resultsList: some View {
         VStack(alignment: .leading, spacing: 2) {
-            let results = model.searchResults
+            let results = model.displayedResults
+            if let expanded = model.expandedDoc {
+                Button {
+                    model.collapseExpansion()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text(expanded.title)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .lineLimit(1)
+                        if model.isLoadingSubPages {
+                            ProgressView().controlSize(.small).scaleEffect(0.5)
+                        }
+                        Spacer()
+                    }
+                    .foregroundColor(Palette.textSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
             if results.isEmpty {
-                Text(model.docQuery.isEmpty ? "No recent destinations — type to search" : "No matches")
+                Text(model.expandedDoc != nil
+                     ? (model.isLoadingSubPages ? "Loading sub-pages…" : "No sub-pages")
+                     : (model.docQuery.isEmpty ? "No recent destinations — type to search" : "No matches"))
                     .font(.system(size: 12))
                     .foregroundColor(Palette.textSecondary)
                     .padding(.vertical, 6)
@@ -288,6 +311,15 @@ struct CaptureView: View {
                                 .font(.system(size: 10.5))
                                 .foregroundColor(Palette.textSecondary)
                                 .lineLimit(1)
+                        }
+                        if canDrillIn(dest) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(Palette.textSecondary.opacity(
+                                    index == model.highlightedIndex ? 1 : 0.35))
+                                .onTapGesture {
+                                    if case .document(let doc) = dest { model.expand(doc) }
+                                }
                         }
                     }
                     .padding(.horizontal, 10)
@@ -331,6 +363,12 @@ struct CaptureView: View {
             .buttonStyle(.plain)
             .disabled(!model.canSave)
         }
+    }
+
+    private func canDrillIn(_ dest: Destination) -> Bool {
+        guard model.expandedDoc == nil,
+              case .document(let doc) = dest, doc.parent == nil else { return false }
+        return true
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {

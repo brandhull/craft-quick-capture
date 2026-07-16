@@ -117,12 +117,20 @@ final class CapturePanelController {
 
             switch event.keyCode {
             case 53: // esc
-                if self.model.isPickingDoc {
+                if self.model.expandedDoc != nil {
+                    self.model.collapseExpansion()
+                } else if self.model.isPickingDoc {
                     self.model.isPickingDoc = false
                     self.model.docQuery = ""
                 } else {
                     self.hide()
                 }
+                return nil
+            case 124 where self.model.isPickingDoc && self.caretAtEndOfFieldEditor(): // →
+                self.model.expandHighlighted()
+                return self.model.expandedDoc != nil ? nil : event
+            case 123 where self.model.expandedDoc != nil && self.model.docQuery.isEmpty: // ←
+                self.model.collapseExpansion()
                 return nil
             case 36 where cmd: // ⌘↩
                 self.model.save()
@@ -143,6 +151,12 @@ final class CapturePanelController {
                 return event
             }
         }
+    }
+
+    /// Only steal → from the search field when it wouldn't move the caret.
+    private func caretAtEndOfFieldEditor() -> Bool {
+        guard let editor = panel?.firstResponder as? NSTextView else { return true }
+        return editor.selectedRange().location >= (editor.string as NSString).length
     }
 
     private func removeKeyMonitor() {

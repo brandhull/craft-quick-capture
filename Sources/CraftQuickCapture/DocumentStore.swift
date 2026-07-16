@@ -45,6 +45,7 @@ final class DocumentStore: ObservableObject {
     @Published var isRefreshing = false
 
     @Published var spaceNames: [String: String] = [:]  // link url → space name
+    @Published var knownSubPages: [String: [CraftDocument]] = [:]  // doc id → sub-pages seen
 
     private var lastFetch: Date?
     private var schemaCache: [String: CraftSchema] = [:]
@@ -54,6 +55,7 @@ final class DocumentStore: ObservableObject {
     private var cacheFile: URL { Config.supportDir.appendingPathComponent("documents.json") }
     private var recentsFile: URL { Config.supportDir.appendingPathComponent("recents.json") }
     private var schemasFile: URL { Config.supportDir.appendingPathComponent("schemas.json") }
+    private var subPagesFile: URL { Config.supportDir.appendingPathComponent("subpages.json") }
 
     private struct Cache: Codable {
         var fetchedAt: Date
@@ -82,6 +84,10 @@ final class DocumentStore: ObservableObject {
         if let data = try? Data(contentsOf: schemasFile),
            let schemas = try? JSONDecoder().decode([String: CraftSchema].self, from: data) {
             schemaCache = schemas
+        }
+        if let data = try? Data(contentsOf: subPagesFile),
+           let subs = try? JSONDecoder().decode([String: [CraftDocument]].self, from: data) {
+            knownSubPages = subs
         }
         refreshIfStale()
     }
@@ -157,12 +163,24 @@ final class DocumentStore: ObservableObject {
         }
     }
 
+    /// Fetches a document's sub-pages live and remembers them so search can
+    /// find them later (with the parent title as context).
+    func subPages(of doc: CraftDocument) async throws -> [CraftDocument] {
+        let subs = try await CraftClient(url: doc.spaceUrl).listSubPages(of: doc)
+        knownSubPages[doc.id] = subs
+        if let data = try? JSONEncoder().encode(knownSubPages) {
+            try? data.write(to: subPagesFile)
+        }
+        return subs
+    }
+
     /// Folder context for a destination: the document's folder, or for a
     /// collection, the containing document's title.
     func context(for dest: Destination) -> String? {
         var parts: [String] = []
         switch dest {
         case .document(let d):
+            if let parent = d.parent { parts.append(parent) }
             if let folder = d.folder { parts.append(folder) }
             if let space = d.spaceName { parts.append(space) }
         case .collection(let c):
@@ -194,6 +212,9 @@ final class DocumentStore: ObservableObject {
         if id.hasPrefix("daily:") { return .dailyNote(String(id.dropFirst(6))) }
         if let d = documents.first(where: { $0.id == id }) { return .document(d) }
         if let c = collections.first(where: { $0.id == id }) { return .collection(c) }
+        for subs in knownSubPages.values {
+            if let s = subs.first(where: { $0.id == id }) { return .document(s) }
+        }
         return nil
     }
 
@@ -235,6 +256,9 @@ final class DocumentStore: ObservableObject {
         }
         for c in collections { consider(.collection(c)) }
         for d in documents { consider(.document(d)) }
+        for subs in knownSubPages.values {
+            for s in subs { consider(.document(s)) }
+        }
 
         return pinned + scored.sorted { ($0.score, $0.dest.title) < ($1.score, $1.dest.title) }
             .prefix(max(0, limit - pinned.count)).map(\.dest)
