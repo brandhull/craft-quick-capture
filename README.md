@@ -53,6 +53,9 @@ Planned: capture straight to Craft's **Tasks inbox** with schedule/deadline date
 - Click the destination row to pick where it goes: recent destinations show
   first, typing searches every document title, folder name, and table in your
   space
+- **Sub-pages**: highlight a document and press **→** (or click its chevron)
+  to drill into its sub-pages; **←** backs out. Sub-pages you've visited join
+  the search index (searchable with the parent's name) and work as recents
 - **↑/↓ + ↩** to pick a destination, **⌘↩** to save, **esc** to cancel
 - The last-used destination stays selected for rapid repeat captures
 - Hold ⌘ and drag the menu bar icon to reposition it (position persists)
