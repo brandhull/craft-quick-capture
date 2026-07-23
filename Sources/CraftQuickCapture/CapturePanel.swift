@@ -144,9 +144,22 @@ final class CapturePanelController {
             case 126 where self.model.isPickingDoc: // ↑
                 self.model.moveHighlight(-1)
                 return nil
-            case 9 where cmd: // ⌘V — intercept only when the pasteboard holds an image
+            case 9 where cmd: // ⌘V — this app has no Edit menu, so macOS never
+                // routes ⌘C/V/X/A into paste:/copy:/cut:/selectAll: on its own.
+                // Send the action ourselves; NSTextView/NSTextField still
+                // implement it correctly once actually invoked.
                 if self.model.pasteImageIfPresent() { return nil }
-                return event
+                NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+                return nil
+            case 8 where cmd: // ⌘C
+                NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                return nil
+            case 7 where cmd: // ⌘X
+                NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
+                return nil
+            case 0 where cmd: // ⌘A
+                NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                return nil
             default:
                 return event
             }
