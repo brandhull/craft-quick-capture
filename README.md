@@ -43,13 +43,17 @@ the right space's link. Daily-note captures target the primary (first) space.
 | A row in a table | A **collection** (table icon in the picker) | The popup becomes a form built from the table's schema — one field per column, dropdowns for single-select columns. ⌘↩ adds the row. Images can't go into table rows. |
 | Something on today's daily note | **Today** (calendar icon, pinned at the top of the picker) | Appends to the calendar-integrated daily page. Typing `tomorrow` or `yesterday` finds those too. Combine with `- [ ]` for a task on today's agenda. |
 
-Planned: capture straight to Craft's **Tasks inbox** with schedule/deadline dates
-(the API supports it; the UI isn't built yet).
+Planned: capture straight to Craft's system **Tasks inbox** (separate from any
+page) with schedule/deadline dates — the API supports it, the UI doesn't yet.
+This is different from the `- [ ]` task support above, which writes a task
+block onto a page or the daily note, not the inbox.
 
 ### Mechanics
 
 - **⌥⌘Space** — toggle the capture popup (also available from the menu bar icon)
-- Type text, and/or **drag an image** onto the window (or **⌘V** paste an image)
+- Type text, and/or **drag an image** onto the window (or **⌘V** paste an
+  image). ⌘C/⌘V/⌘X/⌘A (copy/paste/cut/select-all) work as expected in any
+  text field in the popup
 - Click the destination row to pick where it goes: recent destinations show
   first, typing searches every document title, folder name, and table in your
   space
@@ -78,6 +82,11 @@ CDN (`r.craft.do`) at save time, so the temp copy expiring doesn't matter.
 Privacy note: the image is briefly on that third-party host at an unguessable
 URL. If that bothers you, swap in your own host in `ImageUploader.swift`.
 
+If the relay host is briefly unreachable and Craft can't fetch the image, the
+save fails with a "Document not found" error (Craft's generic failure message
+for this case, confusingly) — the app automatically retries once through the
+other host before giving up.
+
 ### Craft API quirks (confirmed empirically)
 
 - Newlines in `--markdown` must be real newline characters. Escaped literal
@@ -100,8 +109,9 @@ The app is ad-hoc signed, so it runs on your own machine. If you distribute a
 built .app to others, macOS Gatekeeper will warn on first open (right-click →
 Open); building from source avoids that.
 
-Diagnostic: `CraftQuickCapture --selftest <pageId> [imagePath]` runs the save
-pipeline from the CLI.
+Diagnostics: `CraftQuickCapture --selftest <pageId> [imagePath]` runs the page
+save pipeline from the CLI; `--selftest-table <collectionId>` runs the table
+row pipeline. Both insert real content — point them at a throwaway page/table.
 
 ## Notes
 
